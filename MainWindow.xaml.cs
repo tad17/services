@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Windows.Interop;
+using System.Windows.Threading;
 
 namespace services // Должно соответствовать папке проекта
 {
@@ -169,33 +170,46 @@ namespace services // Должно соответствовать папке п�
             double absoluteMouseX = this.Left + mousePositionRelativeToWindow.X;
             double absoluteMouseY = this.Top + mousePositionRelativeToWindow.Y;
 
-            // Debug.WriteLine($"MouseMove: Абс. X={absoluteMouseX}, Абс. Y={absoluteMouseY}. Окно Left={this.Left}, Top={this.Top}. Показана={isPanelShown}, Анимируется={isAnimating}");
-
             // --- Логика показа при наведении на таб ---
-            // Панель скрыта (ее левый край на screenWidth - tabWidth)
-            // И курсор находится над правой tabWidth пикселями экрана.
-            // Т.е., абсолютная X координата мыши больше чем screenWidth - tabWidth.
             if (!isPanelShown && !isAnimating && this.Left == screenWidth - tabWidth && absoluteMouseX > screenWidth - tabWidth)
             {
-                // Условие this.Left == screenWidth - tabWidth проверяет, что окно точно в скрытом состоянии.
                 Debug.WriteLine($"Наведение на таб. Абс. X: {absoluteMouseX}, Край экрана для таба: {screenWidth - tabWidth}");
                 ShowPanel();
             }
+        }
 
-            // --- ИЗМЕНЕНО: Логика скрытия при уходе мыши за пределы окна ---
-            // Панель показана
-            // И курсор находится ЗА пределами прямоугольника окна
+        private void Window_MouseLeave(object sender, MouseEventArgs e)
+        {
             if (isPanelShown && !isAnimating)
             {
-                // Проверяем, находится ли курсор вне границ окна:
-                // Слева от левого края ИЛИ справа от правого края ИЛИ выше верхнего края ИЛИ ниже нижнего края
-                if (absoluteMouseX < this.Left || absoluteMouseX > this.Left + this.Width ||
-                    absoluteMouseY < this.Top || absoluteMouseY > this.Top + this.Height)
-                {
-                     Debug.WriteLine("Мышь покинула границы окна. Скрываем панель.");
-                    HidePanel(); // Скрываем панель
-                }
+                Debug.WriteLine("Мышь покинула окно. Скрываем панель.");
+                HidePanel();
             }
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            var source = PresentationSource.FromVisual(this) as HwndSource;
+            if (source != null)
+            {
+                source.AddHook(WndProc);
+            }
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            const int WM_KEYDOWN = 0x0100;
+            const int VK_C = 0x43;
+
+            if (msg == WM_KEYDOWN && (wParam.ToInt32() == VK_C) && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                Debug.WriteLine("Получен сигнал Ctrl+C. Завершаем программу.");
+                App.Current.Shutdown();
+                handled = true;
+            }
+
+            return IntPtr.Zero;
         }
 
         // --- Методы показа/скрытия панели ---
