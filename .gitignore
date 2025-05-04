@@ -1,0 +1,11 @@
+# Ignore build results and object files
+[Bb]in/
+[Oo]bj/
+
+# Ignore Visual Studio files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.idehelper
+*.exe
